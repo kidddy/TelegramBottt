@@ -1,0 +1,38 @@
+Bunny:/create_poll poll_1
+#
+Bunny:/list
+#
+Bunny:/create_poll kek_poll no
+#
+Bunny:/list
+#
+Bunny:/begin 2
+#
+Bunny:/add_question (Why cats?)
+(cute)
+#
+Bunny:/add_question (Are you crazy?) choice
+(yes)
+(no)
+#
+Bunny:/view
+#
+Bunny:/start_poll 2
+#
+Bunny:/answer 1 They are cute
+#
+Kitty:/begin 2
+#
+Kitty:/answer 1 We are so pretty
+#
+Bunny:/answer 2 1 2
+#
+Kitty:/answer 2 2
+#
+Puppy:/begin 2
+#
+Puppy:/answer 2 2
+#
+Bunny:/stop_poll 2
+#
+Bunny:/result 2
