@@ -17,6 +17,14 @@ case class Poll(name: String,
   val maxQuestionID: Iterator[Int] = Stream.from(questions.size + 1).iterator
 
   def getNextQuestionId: Int = maxQuestionID.next()
+
+  def isStarted: Boolean = {
+    val currTime = new Date()
+    val startedByTime = startTime.exists(starttime => {
+      endTime.exists(endtime => currTime.after(starttime) && currTime.before(endtime))
+    })
+    startedByTime || started
+  }
 }
 
 object PollHandler {
@@ -57,12 +65,9 @@ object PollHandler {
 
         case question: MultiQuestion => question.answersVariants.keys.map(
           variantId => {
-            val senders = question.answers.keys.filter(
-              sender => {
-                println(s"AAAAAAA $variantId $sender:: ${question.answers(sender)}")
-                question.answers(sender).answer.contains(variantId)
-              }
-            ).toList
+            val senders = question.answers.keys.filter(sender => {
+              question.answers(sender).answer.contains(variantId)
+            }).toList
             val percentage = math.round((senders.size.toFloat / question.answers.size.toFloat) * 100)
             val s_senders = if (poll.anonimity) "" else s" (${senders.mkString(", ")})"
             s"$variantId) ${question.answersVariants(variantId)} - $percentage%$s_senders"
@@ -76,6 +81,10 @@ object PollHandler {
 object Constants {
   val VISIBILITY_AFTERSTOP = 0
   val VISIBILITY_CONTINUOUS = 1
+
+  val STATE_IS = 0
+  val STATE_WAS = 1
+  val STATE_WILL = 2
 }
 
 
@@ -128,21 +137,26 @@ object PollStorage {
 
 object CommandHandler {
   def createPoll(sender: String, cmd: CreatePollCmd): String = {
-    val poll = Poll(name = cmd.name,
-      anonimity = cmd.anonimity.getOrElse("yes") == "yes",
-      visibility = cmd.visibility.getOrElse("afterstop") match {
-        case "afterstop" => Constants.VISIBILITY_AFTERSTOP
-        case "continuous" => Constants.VISIBILITY_CONTINUOUS
-      },
-      startTime = cmd.startTime,
-      endTime = cmd.endTime,
-      questions = immutable.Map[Int, Question](),
-      owner = sender,
-      started = false)
-    val id = PollStorage.getNewId
-    PollStorage.addPoll(id, poll)
+    val correctDates = cmd.startTime.isEmpty && cmd.endTime.isEmpty || cmd.startTime.isDefined && cmd.endTime.isEmpty ||
+      cmd.startTime.isEmpty && cmd.endTime.isDefined || cmd.startTime.get.before(cmd.endTime.get)
 
-    id.toString
+    if (correctDates) {
+      val poll = Poll(name = cmd.name,
+        anonimity = cmd.anonimity.getOrElse("yes") == "yes",
+        visibility = cmd.visibility.getOrElse("afterstop") match {
+          case "afterstop" => Constants.VISIBILITY_AFTERSTOP
+          case "continuous" => Constants.VISIBILITY_CONTINUOUS
+        },
+        startTime = cmd.startTime,
+        endTime = cmd.endTime,
+        questions = immutable.Map[Int, Question](),
+        owner = sender,
+        started = false)
+      val id = PollStorage.getNewId
+      PollStorage.addPoll(id, poll)
+
+      id.toString
+    } else "Wrong dates"
   }
 
   def addQuestion(sender: String, cmd: AddQuestionCmd): String = {
@@ -256,7 +270,7 @@ object CommandHandler {
         handlePoll(cmd.id, poll => {
           poll.visibility match {
             case Constants.VISIBILITY_CONTINUOUS => PollHandler.getPollResults(cmd.id)
-            case Constants.VISIBILITY_AFTERSTOP => doUnlessStarted(poll, poll => PollHandler.getPollResults(cmd.id))
+            case Constants.VISIBILITY_AFTERSTOP => doUnlessStarted(poll, _ => PollHandler.getPollResults(cmd.id))
           }
         })
       }
@@ -302,35 +316,37 @@ object CommandHandler {
           doIfStarted(poll, poll => {
             handleQuestion(poll, cmd.id, question => {
               ifAnswerNotExists(poll, question, sender, _ => {
-                try {
-                  val newQuestion = question match {
-                    case question: OpenQuestion => {
-                      val answer = OpenAnswer(cmd.answer)
+                question match {
+                  case question: OpenQuestion => cmd.answer.asOpenAnswer().map(answer => {
+                    val newAnswers = question.answers + (sender -> answer)
+                    val newQuestion = question.copy(answers = newAnswers)
+                    val newQuestions = poll.questions + (cmd.id -> newQuestion)
+                    val newPoll = poll.copy(questions = newQuestions)
+                    PollStorage.addPoll(PollStorage.getSelectedPollId(sender), newPoll)
+                    "Answer added"
+                  }).getOrElse("Bad answer format")
+
+                  case question: ChoiceQuestion => cmd.answer.asChoiceAnswer().map(answer => {
+                    if (question.answersVariants.contains(answer.answer)) {
                       val newAnswers = question.answers + (sender -> answer)
-                      question.copy(answers = newAnswers)
-                    }
-                    case question: ChoiceQuestion => {
-                      val idAnswer = Integer.parseInt(cmd.answer)
-                      if (!question.answersVariants.contains(idAnswer)) return "Bad answer"
-                      val newAnswers = question.answers + (sender -> ChoiceAnswer(idAnswer))
-                      question.copy(answers = newAnswers)
-                    }
-                    case question: MultiQuestion => {
-                      val idAnswers = cmd.answer.split(" ").map(s_arg => Integer.parseInt(s_arg)).toList
-                      for (id <- idAnswers){
-                        if (!question.answersVariants.contains(id)) return "Bad answer"
-                      }
-                      val answer = MultiAnswer(idAnswers)
+                      val newQuestion = question.copy(answers = newAnswers)
+                      val newQuestions = poll.questions + (cmd.id -> newQuestion)
+                      val newPoll = poll.copy(questions = newQuestions)
+                      PollStorage.addPoll(PollStorage.getSelectedPollId(sender), newPoll)
+                      "Answer added"
+                    } else "Answer out of range"
+                  }).getOrElse("Bad answer format")
+
+                  case question: MultiQuestion => cmd.answer.asMultiAnswer().map(answer => {
+                    if (answer.answer.forall(variant => question.answersVariants.contains(variant))) {
                       val newAnswers = question.answers + (sender -> answer)
-                      question.copy(answers = newAnswers)
-                    }
-                  }
-                  val newQuestions = poll.questions + (cmd.id -> newQuestion)
-                  val newPoll = poll.copy(questions = newQuestions)
-                  PollStorage.addPoll(PollStorage.getSelectedPollId(sender), newPoll)
-                  "Answer added"
-                } catch {
-                  case _: NumberFormatException => "Bad answer"
+                      val newQuestion = question.copy(answers = newAnswers)
+                      val newQuestions = poll.questions + (cmd.id -> newQuestion)
+                      val newPoll = poll.copy(questions = newQuestions)
+                      PollStorage.addPoll(PollStorage.getSelectedPollId(sender), newPoll)
+                      "Answer added"
+                    } else "Answer out of range"
+                  }).getOrElse("Bad answer format")
                 }
               })
             })
@@ -350,5 +366,9 @@ object BotCore {
       case CommandParser.Success(cmd, _) => CommandHandler.doCommand(sender, cmd)
       case CommandParser.Failure(error, _) => s"Error: $error"
     }
+  }
+
+  def clearPolls(): Unit = {
+    PollStorage.polls = immutable.Map[Int, Poll]()
   }
 }

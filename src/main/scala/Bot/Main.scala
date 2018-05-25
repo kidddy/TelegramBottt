@@ -19,8 +19,7 @@ object Main {
 
     val input = input_file.getLines().map(line => line.trim).mkString(" ")
 
-    val smt = split_commands(input)
-    smt.foreach(sender_cmd => {
+    split_commands(input).foreach(sender_cmd => {
       val sender = sender_cmd._1
       val cmdString = sender_cmd._2
       val answer = BotCore.doCommand(sender, cmdString)

@@ -21,6 +21,6 @@ object Commands {
   case class ViewCmd() extends Command
   case class AddQuestionCmd(question: String, questionType: Option[String], variants: List[String]) extends Command
   case class DeleteQuestionCmd(id: Int) extends Command
-  case class AnswerCmd(id: Int, answer: String) extends Command
+  case class AnswerCmd(id: Int, answer: SomeAnswer) extends Command
 }
 

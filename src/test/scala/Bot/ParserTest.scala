@@ -153,7 +153,7 @@ class ParserTest extends FlatSpec with Matchers {
     cmd match {
       case cmd: Commands.AnswerCmd => {
         cmd.id shouldBe 42
-        cmd.answer shouldBe "is the answer"
+        cmd.answer.answer shouldBe "is the answer"
       }
     }
   }

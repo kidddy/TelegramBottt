@@ -2,7 +2,7 @@ Bunny:/create_poll poll_1
 #
 Bunny:/list
 #
-Bunny:/create_poll kek_poll no
+Bunny:/create_poll kek_poll
 #
 Bunny:/list
 #
@@ -25,7 +25,7 @@ Kitty:/begin 2
 #
 Kitty:/answer 1 We are so pretty
 #
-Bunny:/answer 2 1 2
+Bunny:/answer 2 1
 #
 Kitty:/answer 2 2
 #

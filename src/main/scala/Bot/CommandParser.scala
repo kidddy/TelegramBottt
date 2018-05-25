@@ -26,7 +26,7 @@ object CommandParser extends RegexParsers{
   def end: Parser[Commands.EndCmd] = "/end" ^^ {_ => new Commands.EndCmd}
   def view: Parser[Commands.ViewCmd] = "/view" ^^ {_ => new Commands.ViewCmd}
   def delete_question: Parser[Commands.DeleteQuestionCmd] = "/delete_question" ~> bracketsWrap(id) ^^ {Commands.DeleteQuestionCmd}
-  def answer: Parser[Commands.AnswerCmd] = "/answer" ~> bracketsWrap(id) ~ bracketsWrap(sentence) ^^ { case id ~ answer => Commands.AnswerCmd(id, answer)}
+  def answer: Parser[Commands.AnswerCmd] = "/answer" ~> bracketsWrap(id) ~ bracketsWrap(sentence) ^^ { case id ~ answer => Commands.AnswerCmd(id, SomeAnswer(answer))}
 
   def addQuestion: Parser[Commands.AddQuestionCmd] = "/add_question" ~>
     ("(" ~> sentence <~ ")") ~
