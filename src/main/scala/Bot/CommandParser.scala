@@ -44,7 +44,7 @@ object CommandParser extends RegexParsers{
   def date: Parser[Date] = {
     val d: Parser[Int] = """\d+""".r ^^ (num => Integer.parseInt(num))
     val ddd: Parser[(Int, Int, Int)] = (d <~ ":") ~ d ~ (":" ~> d) ^^ {case d1 ~ d2 ~ d3 => (d1, d2, d3)}
-    ddd ~ ddd ^^ {case time ~ date => new Date(date._1, date._2, date._3, time._1, time._2, time._3)}
+    ddd ~ ddd ^^ {case time ~ date => new Date(date._1 - 1900, date._2 - 1, date._3, time._1, time._2, time._3)}
   }
   def id: Parser[Int] = """\d+""".r ^^ {_.toInt}
 

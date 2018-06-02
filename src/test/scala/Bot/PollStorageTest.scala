@@ -177,7 +177,7 @@ class PollStorageTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     BotCore.doCommand(sender1, cmd5)
     BotCore.doCommand(sender1, cmd6)
     val answer = BotCore.doCommand(sender1, cmd7)
-    answer shouldBe "Error: cannot modify poll (It's running)"
+    answer shouldBe "Error: cannot get access poll (It's running)"
   }
 
   "check answer" should "answer" in {

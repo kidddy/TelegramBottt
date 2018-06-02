@@ -20,6 +20,9 @@ case class Poll(name: String,
 
   def isStarted: Boolean = {
     val currTime = new Date()
+//    println(s"currTime: $currTime")
+//    println(s"startTime: $startTime")
+//    println(s"endTime: $endTime")
     val startedByTime = startTime.exists(starttime => {
       endTime.exists(endtime => currTime.after(starttime) && currTime.before(endtime))
     })
@@ -213,11 +216,11 @@ object CommandHandler {
   }
 
   def doIfStarted(poll: Poll, func: Poll => String): String = {
-    if (poll.started) func(poll) else "Poll is not started"
+    if (poll.isStarted) func(poll) else "Poll is not started"
   }
 
   def doUnlessStarted(poll: Poll, func: Poll => String): String = {
-    if (!poll.started) func(poll) else "Error: cannot modify poll (It's running)"
+    if (!poll.isStarted) func(poll) else "Error: cannot get access poll (It's running)"
   }
 
   def ifAnswerNotExists(poll: Poll, question: Question, sender: String, func: Poll => String): String = {
